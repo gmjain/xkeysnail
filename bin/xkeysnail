@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env /home/gmjain/software/anaconda/anaconda3/bin/python
 # -*- coding: utf-8 -*-
 
 if __name__ == '__main__':

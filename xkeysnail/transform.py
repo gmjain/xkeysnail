@@ -39,6 +39,37 @@ def get_class_name(window):
     except:
         return None
 
+
+def get_active_window_wm_name(quiet, display=Xlib.display.Display()):
+    """Get active window's WM_CLASS"""
+    atom = display.intern_atom('_NET_WM_NAME')
+    current_window = display.get_input_focus().focus
+    name = get_window_name(current_window, atom)
+    if not quiet:
+        print(name)
+    if name:
+        # (process name, class name)
+        return str(name.decode('utf-8'))
+    else:
+        return ""
+
+
+def get_window_name(window, atom):
+    """Get window's class name (recursively checks parents)"""
+    try:
+        wmname = window.get_full_property(atom, 0).value
+        wmclass = window.get_wm_class()
+        # workaround for Java app
+        # https://github.com/JetBrains/jdk8u_jdk/blob/master/src/solaris/classes/sun/awt/X11/XFocusProxyWindow.java#L35
+        if (wmclass is None and wmname is None) or "FocusProxy" in wmclass:
+            parent_window = window.query_tree().parent
+            if parent_window:
+                return get_window_name(parent_window, atom)
+            return None
+        return wmname
+    except:
+        return None
+
 # ============================================================ #
 
 
@@ -395,14 +426,16 @@ def transform_key(key, action, wm_class=None, quiet=False):
         if wm_class is None:
             wm_class = get_active_window_wm_class()
         keymap_names = []
+        wm_name = get_active_window_wm_name(quiet)
         for condition, mappings, name in _toplevel_keymaps:
             if (callable(condition) and condition(wm_class)) \
+               or (isinstance(condition, dict) and condition['function'](wm_name)) \
                or (hasattr(condition, "search") and condition.search(wm_class)) \
                or condition is None:
                 _mode_maps.append(mappings)
                 keymap_names.append(name)
         if not quiet:
-            print("WM_CLASS '{}' | active keymaps = [{}]".format(wm_class, ", ".join(keymap_names)))
+            print("WM_NAME '{}' | WM_CLASS '{}' | active keymaps = [{}]".format(wm_name, wm_class, ", ".join(keymap_names)))
 
     if not quiet:
         print(combo)
